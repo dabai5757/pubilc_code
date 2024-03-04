@@ -1,0 +1,32 @@
+//chrome-rec/manifest.json
+{
+  "manifest_version": 3,
+  "name": "chrome-rec",
+  "version": "1.0",
+  "description": "マイク/スピーカー音声の録音（α版）",
+  "action": {
+    // default_popupがあるとbackground.jsのchrome.action.onClicked.addListenerが発火しない
+    //"default_popup": "popup.html",
+    "default_icon": {
+      "48": "icon.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["activeTab", "storage", "notifications", "desktopCapture"],
+  "host_permissions": ["<all_urls>"],
+  "web_accessible_resources": [
+    {
+      "resources": ["popup.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["lame.min.js"],
+      "run_at": "document_end"
+    }
+  ]
+}

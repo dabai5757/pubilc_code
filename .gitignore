@@ -1,0 +1,9 @@
+.vscore
+.git
+__pycache__
+usersharu.git-credentials
+myenv
+dist
+build
+share
+bak

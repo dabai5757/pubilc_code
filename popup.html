@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>マイク/スピーカー音声の録音（α版）</title>
+  <script src="lame.min.js"></script>
+  <script src="popup.js"></script>
+</head>
+<body style="background-color:#333333;">
+  <div id="myFormDiv" style="display: flex; flex-direction: column; background-color:#333333;">
+    <div style="display: flex; align-items: center; margin-top: 10px; margin-bottom: 10px;">
+      <label for="filename" style="color: white; margin-right: 10px;">保存時のファイル名:</label>
+      <input type="text" id="filename" name="filename" value="chrome-rec" />
+      <button id="recordButton" type="button" style="margin-left: 10px; flex-grow: 1; color: white; background-color:darkslategray; text-align: center;">音声録音開始</button>
+    </div>
+    <div id="volumeDisplayMic" style="color: white; margin-top: 10px;">録音音量（マイク）:<span id="volumeValueMic"></span></div>
+    <div id="volumeDisplaySpeaker" style="color: white; margin-top: 10px;">録音音量（スピーカー）:<span id="volumeValueSpeaker"></span></div>
+  </div>
+</body>
+</html>
