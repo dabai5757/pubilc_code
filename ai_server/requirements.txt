@@ -1,0 +1,9 @@
+flask
+requests
+pymysql
+concurrent-log-handler
+# flask==3.0.2
+faster_whisper==1
+numba
+flask_cors
+psutil

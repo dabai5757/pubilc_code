@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  mysql:
+    build: ./sql
+    image: image_sql
+    container_name: mysql_container
+    hostname: mysql_host
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: sound_files_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - aibt_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  scaling_balancer:
+    build: ./scaling_balancer
+    image: image_scaling_balancer
+    container_name: scaling_balancer_container
+    environment:
+      FLASK_ENV: development
+      UPSTREAM_SERVERS: "127.0.0.1:5004"
+    ports:
+      - "5003:5003"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      translation:
+        condition: service_started
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - aibt_network
+
+  request_counter:
+    build: ./request_counter
+    image: image_request_counter
+    container_name: request_counter_containers
+    depends_on:
+      mysql:
+        condition: service_healthy
+      scaling_balancer:
+        condition: service_started
+      translation:
+        condition: service_started
+    environment:
+      DB_HOST: mysql_host
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_NAME: sound_files_db
+    networks:
+      - aibt_network
+
+  db_to_queue:
+    build: ./db_to_queue
+    image: image_db_to_queue
+    container_name: db_to_queue_containers
+    depends_on:
+      mysql:
+        condition: service_healthy
+      scaling_balancer:
+        condition: service_started
+      translation:
+        condition: service_started
+    environment:
+      DB_HOST: mysql_host
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_NAME: sound_files_db
+    ports:
+      - "5005:5005"
+    networks:
+      - aibt_network
+
+  translation:
+    build: ./ai_server
+    image: translation
+    container_name: translation_1
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "5004:5004"
+    volumes:
+      - ./ai_server:/var/www/ai_server
+      - ./ai_server/input_audio_files:/mnt/input_audio_files
+      # - ./ai_server/output_txt_files://ai_server/output_txt_files
+      # - ./ai_server/logs:/logs
+    tty: true
+    environment:
+      DB_HOST: mysql_host
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_NAME: sound_files_db
+    networks:
+      - aibt_network
+
+networks:
+  aibt_network:
+    external: true
