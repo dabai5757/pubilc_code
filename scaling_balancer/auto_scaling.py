@@ -41,7 +41,7 @@ def check_port(ip, port, retries=5, delay=3):
     return False
 
 # 获取绝对路径
-current_dir = '/Users/yin_shuai/Desktop/project/container_manager/ok_finshのコピー'
+current_dir = '/Users/yin_shuai/Desktop/project/並列/ok_finsh'
 ai_server_path = os.path.join(current_dir, 'ai_server')
 
 input_audio_files_path = os.path.join(ai_server_path, 'input_audio_files')

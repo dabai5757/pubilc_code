@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify, send_file
-from multiprocessing import Process, Queue, Lock
+from multiprocessing import Lock
 from datetime import datetime
 from flask_cors import CORS
 import socket
@@ -15,6 +15,7 @@ from numba.core.errors import NumbaDeprecationWarning
 import sys
 import math
 import psutil
+import concurrent.futures
 
 warnings.filterwarnings('ignore', category=NumbaDeprecationWarning)
 warnings.filterwarnings("ignore", "FP16 is not supported on CPU; using FP32 instead")
@@ -33,7 +34,7 @@ os.environ["PYTHONIOENCODING"] = "UTF-8"
 count = 0
 
 # 配置日志
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 try:
     logging.basicConfig(filename='log_cui_info.log', level=logging.INFO, encoding='utf-8')
@@ -63,8 +64,6 @@ def get_container_ip():
     ip_address = socket.gethostbyname(hostname)
     return ip_address
 
-task_queue = Queue()
-
 def update_task_status(task_id, status):
     """更新数据库中任务的状态"""
     conn = None
@@ -80,12 +79,7 @@ def update_task_status(task_id, status):
         if conn:
             conn.close()
 
-def log_resource_usage():
-    process = psutil.Process(os.getpid())
-    logging.info(f"CPU usage: {process.cpu_percent()}%")
-    logging.info(f"Memory usage: {process.memory_info().rss / (1024 * 1024)} MB")
-
-def handle_task(audio_id, file_name, container_ip, start_time_str, task_queue):
+def handle_task(audio_id, file_name, container_ip, start_time_str):
     try:
         audio_path = os.path.join("/mnt/input_audio_files", file_name)
 
@@ -93,21 +87,17 @@ def handle_task(audio_id, file_name, container_ip, start_time_str, task_queue):
 
         out_filename = generate_output_filename(file_name)
         
-        log_resource_usage()
-        
         transcription_path = cmd_transcribe('faster-large-v2', 'cpu', audio_path, out_filename, None, None, None, None, None)
-        
-        log_resource_usage()
 
         end_time = time.time()
         end_time_str = datetime.fromtimestamp(end_time).strftime('%Y-%m-%d %H:%M:%S')
         logging.info(f"处理结束，任务ID-{audio_id}，容器IP-{container_ip}，结束时间-{end_time_str}")
 
         update_task_status(audio_id, 'completed')
-        task_queue.put((transcription_path, None))
+        return transcription_path, None
     except Exception as e:
         logging.error(f"Task handling error: {e}")
-        task_queue.put((None, str(e)))
+        return None, str(e)
 
 @app.route('/sleep', methods=['POST'])
 def sleep():
@@ -120,10 +110,9 @@ def sleep():
         start_time = time.time()
         start_time_str = datetime.fromtimestamp(start_time).strftime('%Y-%m-%d %H:%M:%S')
         
-        process = Process(target=handle_task, args=(audio_id, file_name, container_ip, start_time_str, task_queue))
-        process.start()
-        process.join()
-        transcription_path, error = task_queue.get()
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(handle_task, audio_id, file_name, container_ip, start_time_str)
+            transcription_path, error = future.result()
 
         if transcription_path:
             return send_file(transcription_path, as_attachment=True)
@@ -133,28 +122,20 @@ def sleep():
         return {"error": "请提供一个有效的整数ID和音频文件"}, 400
 
 # 在程序启动时加载模型
-def load_model():
+def get_audio_model():
     global audio_model
-    logging.info("Loading model...")
-    
-    log_resource_usage()
-    
-    if "cuda" in device:
-        audio_model = WhisperModel("large-v2", device="cuda", compute_type="float16")
-    else:
-        audio_model = WhisperModel("large-v2", device="cpu")
-    
-    logging.info("Model loaded successfully")
-    
-    log_resource_usage()
+    if audio_model is None:
+        audio_model = WhisperModel("large-v2", device="cpu", num_workers=4, cpu_threads=4)
+    return audio_model
 
 def cmd_transcribe(model, device, in_filepath, out_filename, language, initial_prompt, verbose, dtime, list):
     logging.debug(">cmd_transcribe")
     logging_cui(f"model:{model}, device:{device}, in_filepath:{in_filepath}, out_filename:{out_filename}, language:{language}, initial_prompt:{initial_prompt}, verbose:{verbose}, dtime:{dtime}, list:{list}", is_log=True)
-    global count
-    if dtime is None : dtime_base = datetime.now()
-    else             : dtime_base = datetime.fromisoformat(dtime)
-    if in_filepath == None and list == None:
+    if dtime is None:
+        dtime_base = datetime.now()
+    else:
+        dtime_base = datetime.fromisoformat(dtime)
+    if in_filepath is None and list is None:
         return
     if in_filepath:
         return transcribe(model, device, in_filepath, out_filename, language, initial_prompt, verbose, dtime_base)
@@ -184,22 +165,10 @@ def _get_files_from_list(list_path):
 def transcribe(model="faster-large-v2", device="cuda:0", in_filepath="./input_audio_files/sample.wav", out_filename=None, language="Japanese", initial_prompt="", verbose=False, dtime_base=None):
     logging.debug(">transcribe")
     global first_time
-    global output_file
     global audio_model
 
-    start_time = 0
-
-    logging_cui(f'①精度・処理时间（faster-large-v2。指定しないと「faster-large-v2」）:{model}', is_log=True)
-    logging_cui(f'②ハードウェア（cpu,cuda。指定しないと自動検出）:{device}', is_log=True)
-    logging_cui(f'③詳細出力（True,False。指定しないと「True」）:{verbose}', is_log=True)
-    logging_cui(f'④音声ファイルのパス（指定しないと「sample.mp3」）:{in_filepath}', is_log=True)
-    logging_cui(f'⑤出力ファイルのパス（指定しないと「YYYY-MM-DD-hh-mm-ss.txt」）:{out_filename}', is_log=True)
-
     if not out_filename:
-        only_filename = os.path.basename(in_filepath)
-        base_filename, _ = os.path.splitext(only_filename)
-        timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-        out_filename = f"{base_filename}_{timestamp}.txt"
+        out_filename = generate_output_filename(in_filepath)
     txt_filepath = os.path.join("output_txt_files", out_filename)
     txt_filefullpath = os.path.abspath(txt_filepath)
     txt_directory_path = os.path.dirname(txt_filefullpath)
@@ -220,7 +189,7 @@ def transcribe(model="faster-large-v2", device="cuda:0", in_filepath="./input_au
                 text = _transcribe_faster_whisperlib_model(in_filepath, model, device, language=language, initial_prompt=initial_prompt, verbose=verbose, dtime_base=dtime_base)
             else:
                 logging_cui(f'No such model:{model}', is_print=True)
-            logging_cui(f"\n{text}", is_output_file=True)
+            output_file.write(text)
     except OSError as e:
         logging_cui(f"transcribe() で OSError: {e}", is_print=True, is_log=True)
         logging_cui(f"traceback:{traceback.format_exc()}", is_print=True, is_log=True)
@@ -246,6 +215,7 @@ def _transcribe_faster_whisperlib_model(in_filepath, model, device, language=Non
     try:
         with transcribe_lock:
             logging.debug("Starting transcription")
+            audio_model = get_audio_model()
             segments, info = audio_model.transcribe(in_filepath, language=language, initial_prompt=initial_prompt)
             logging.debug("Transcription completed")
             logging.debug(f"Transcription segments: {segments}")
@@ -318,5 +288,4 @@ def generate_output_filename(file_name):
 
 if __name__ == '__main__':
     device = "cpu"  # 如果需要使用GPU，则设置为 "cuda"
-    load_model()
     app.run(host='0.0.0.0', port=5004)

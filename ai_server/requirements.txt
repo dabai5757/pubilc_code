@@ -7,3 +7,4 @@ faster_whisper==1
 numba
 flask_cors
 psutil
+openai-whisper

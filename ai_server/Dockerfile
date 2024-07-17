@@ -14,21 +14,22 @@ RUN apt-get update \
         ca-certificates \
         libsndfile1-dev \
         libgl1 \
+        ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制并安装 Python 依赖
 COPY requirements.txt .
-RUN pip install --upgrade pip && \
-    pip install -r requirements.txt
+RUN pip3 install --upgrade pip && \
+    pip3 install -r requirements.txt
 
-# 安装额外的 Python 包
-RUN pip install flask requests pymysql concurrent-log-handler numba
-
-# 设置 Python 3.11 环境变量
-ENV PATH="/usr/bin/python3.11:${PATH}"
+# 安装 openai-whisper
+# RUN pip3 install openai-whisper
 
 # 复制应用代码到容器中
 COPY . .
+
+# 预先下载并加载模型
+#RUN python3 -c 'from faster_whisper import WhisperModel; model = WhisperModel("large-v2", device="cpu", num_workers=4, cpu_threads=4)'
 
 # 暴露 Flask 应用的端口
 EXPOSE 5004
