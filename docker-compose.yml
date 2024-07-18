@@ -10,7 +10,7 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: sound_files_db
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
@@ -100,6 +100,16 @@ services:
       DB_USER: root
       DB_PASSWORD: root
       DB_NAME: sound_files_db
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    runtime: nvidia
     networks:
       - aibt_network
 

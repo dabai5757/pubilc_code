@@ -86,8 +86,8 @@ def handle_task(audio_id, file_name, container_ip, start_time_str):
         logging.info(f"处理开始，任务ID-{audio_id}，容器IP-{container_ip}，开始时间-{start_time_str}")
 
         out_filename = generate_output_filename(file_name)
-        
-        transcription_path = cmd_transcribe('faster-large-v2', 'cpu', audio_path, out_filename, None, None, None, None, None)
+
+        transcription_path = cmd_transcribe('faster-large-v2', 'cuda', audio_path, out_filename, None, None, None, None, None)
 
         end_time = time.time()
         end_time_str = datetime.fromtimestamp(end_time).strftime('%Y-%m-%d %H:%M:%S')
@@ -104,12 +104,12 @@ def sleep():
     data = request.get_json(force=True)
     audio_id = data.get('audio_id')
     file_name = data.get('file_name')
-    
+
     if audio_id and file_name:
         container_ip = get_container_ip()
         start_time = time.time()
         start_time_str = datetime.fromtimestamp(start_time).strftime('%Y-%m-%d %H:%M:%S')
-        
+
         with concurrent.futures.ThreadPoolExecutor() as executor:
             future = executor.submit(handle_task, audio_id, file_name, container_ip, start_time_str)
             transcription_path, error = future.result()
@@ -125,7 +125,7 @@ def sleep():
 def get_audio_model():
     global audio_model
     if audio_model is None:
-        audio_model = WhisperModel("large-v2", device="cpu", num_workers=4, cpu_threads=4)
+        audio_model = WhisperModel("large-v2", device="cuda", num_workers=4, cpu_threads=4)
     return audio_model
 
 def cmd_transcribe(model, device, in_filepath, out_filename, language, initial_prompt, verbose, dtime, list):
@@ -287,5 +287,5 @@ def generate_output_filename(file_name):
     return f"{base_filename}_{timestamp}.txt"
 
 if __name__ == '__main__':
-    device = "cpu"  # 如果需要使用GPU，则设置为 "cuda"
+    device = "cuda"  # 如果需要使用GPU，则设置为 "cuda"
     app.run(host='0.0.0.0', port=5004)

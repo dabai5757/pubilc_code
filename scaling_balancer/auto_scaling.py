@@ -41,7 +41,7 @@ def check_port(ip, port, retries=5, delay=3):
     return False
 
 # 获取绝对路径
-current_dir = '/Users/yin_shuai/Desktop/project/並列/ok_finsh'
+current_dir = '/home/sudouser/project/gpu_test'
 ai_server_path = os.path.join(current_dir, 'ai_server')
 
 input_audio_files_path = os.path.join(ai_server_path, 'input_audio_files')
@@ -53,29 +53,43 @@ logging.info(f"input_audio_files_path: {input_audio_files_path}")
 
 def start_container(client, image_name, index, network_name):
     try:
+        # 设备请求配置，以使用 GPU
+        device_requests = [
+            docker.types.DeviceRequest(
+                count=-1,  # 使用所有可用的GPU
+                capabilities=[['gpu']]
+            )
+        ]
+
         new_container = client.containers.run(
-            image_name, 
-            name=f"{image_name}_{index}", 
-            detach=True, 
-            ports={'5004/tcp': None}, 
+            image_name,
+            name=f"{image_name}_{index}",
+            detach=True,
+            ports={'5004/tcp': None},
             network=network_name,
             environment={
                 'DB_USER': 'root',
                 'DB_PASSWORD': 'root',
                 'DB_NAME': 'sound_files_db',
                 'DB_HOST': 'mysql',
-                'DB_PORT': 3306
+                'DB_PORT': 3306,
+                'NVIDIA_VISIBLE_DEVICES': 'all',
+                'NVIDIA_DRIVER_CAPABILITIES': 'compute,utility'
             },
             volumes={
                 ai_server_path: {'bind': '/var/www/ai_server', 'mode': 'rw'},
                 input_audio_files_path: {'bind': '/mnt/input_audio_files', 'mode': 'rw'}
             },
+            device_requests=device_requests,  # 添加设备请求以使用 GPU
+            runtime='nvidia',  # 指定 nvidia 运行时
             tty=True,
-            working_dir='/var/www/ai_server'  # 指定工作目录
+            working_dir='/var/www/ai_server'
         )
+
         new_container.reload()
         new_ip = new_container.attrs['NetworkSettings']['Networks'][network_name]['IPAddress']
         logging.info(f"Started container {new_container.name} with IP {new_ip}")
+
         if check_port(new_ip, 5004):
             with lock:
                 container_task_counts[new_container.name] = 0
@@ -95,11 +109,11 @@ def wait_for_tasks_completion(container_name):
         with lock:
             futures = container_futures[container_name]
             task_count = container_task_counts[container_name]
-        
+
         if not futures and task_count == 0:
             logging.info(f"All tasks completed on container {container_name}")
             break
-        
+
         if futures:
             completed, _ = wait(futures, timeout=1)
             with lock:
@@ -132,7 +146,7 @@ def manage_containers(target_count, image_name):
         containers_to_remove = sorted(running_containers, key=lambda x: x.name, reverse=True)[:abs(difference)]
         for container in containers_to_remove:
             wait_for_tasks_completion(container.name)
-            
+
             # 再次检查是否有新任务被添加
             with lock:
                 if container_task_counts[container.name] > 0:
@@ -146,7 +160,7 @@ def manage_containers(target_count, image_name):
                 logging.info(f"Container {container.name} removed successfully")
             except docker.errors.APIError as e:
                 logging.error(f"Error removing container {container.name}: {e}")
-            
+
             with lock:
                 container_task_counts.pop(container.name, None)
                 container_futures.pop(container.name, None)
@@ -204,7 +218,7 @@ def proxy_request(container_ip, audio_id, file_name, container_name):
             container_futures[container_name] = [f for f in container_futures[container_name] if not f.done()]
 
         logging.info(f"audio_id {audio_id} with file_name {file_name} completed on {container_ip} from {start_time_str} to {end_time_str}")
-        
+
         return {
             # "response": response.json(),
             "start_time": start_time_str,
@@ -258,7 +272,7 @@ def add_task():
         future = executor.submit(proxy_request, container_ip, audio_id, file_name, container_name)
         with lock:
             container_futures[container_name].append(future)
-        
+
         return jsonify({"message": "Task accepted", "container_ip": container_ip}), 202
 
     else:
