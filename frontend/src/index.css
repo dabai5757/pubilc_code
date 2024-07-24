@@ -1,0 +1,128 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+}
+
+#fileListContainer {
+  margin: 20px 0;
+}
+
+#fileList {
+  list-style-type: none;
+  padding: 0;
+}
+
+.file-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  border: 1px solid #ddd;
+  margin-bottom: 10px;
+  border-radius: 5px;
+  background-color: #f9f9f9;
+}
+
+.file-list-item .file-name-span {
+  flex-grow: 1;
+  text-align: left;
+}
+
+.file-list-item .download-link {
+  margin-left: 10px;
+  color: #007bff;
+  text-decoration: none;
+  font-size: 16px;
+}
+
+.file-list-item .download-link:hover {
+  text-decoration: underline;
+}
+
+.file-list-item .delete-button {
+  margin-left: auto;
+}
+
+.file-path-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 10px 0;
+}
+
+.file-path-label {
+  margin-right: 610px;
+  font-size: 25px;
+  color: #110d0d;
+}
+
+.file-input-label {
+  margin: 10px 0;
+  padding: 15px 20px;
+  background-color: #78b778;
+  color: #110d0d;
+  cursor: pointer;
+  border: 2px solid black;
+  margin-left: 0px;
+}
+
+button {
+  margin: 5% 10px;
+  padding: 10px 12px;
+  font-size: 16px;
+  cursor: pointer;
+  background-color: #e36269;
+  width: 80px;
+  height: 48px;
+}
+
+button:disabled {
+  background-color: #c2c9c2;
+  cursor: not-allowed;
+  padding: 15px 20px;
+  font-size: 16px;
+}
+
+.status {
+  margin: 40px 0;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 20px;
+  background-color: #f7f7f7;
+  border-radius: 10px;
+  margin-top: 20px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 100%;
+  background-color: #4caf50;
+  border-radius: 10px;
+  animation: progress 1s linear infinite;
+}
+
+@keyframes progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.custom-button {
+  width: 120px;
+  height: 60px;
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: #78b778;
+}

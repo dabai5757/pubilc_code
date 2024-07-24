@@ -17,7 +17,12 @@ DB_CONFIG = {
 
 QUEUE_MAX_SIZE = 30
 CHECK_INTERVAL = 5  # in seconds
-API_URL = "http://scaling_balancer:5003/add_task"  # 使用 Docker Compose 中的服务名称
+
+scaling_balancer_CONTAINER_PORT = int(os.getenv("scaling_balancer_CONTAINER_PORT"))
+if scaling_balancer_CONTAINER_PORT is None:
+    raise ValueError("scaling_balancer_CONTAINER_PORT environment variable is not set")
+
+API_URL = f"http://scaling_balancer:{scaling_balancer_CONTAINER_PORT}/add_task"  # 使用 Docker Compose 中的服务名称
 
 async def fetch_pending_tasks(queue):
     while True:

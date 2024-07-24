@@ -35,4 +35,4 @@ COPY . .
 EXPOSE 5004
 
 # 运行 Python 应用
-CMD ["python3", "sleep.py"]
+CMD ["python3", "translation.py"]

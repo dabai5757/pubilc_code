@@ -1,0 +1,66 @@
+# Define upstream server
+upstream frontend {
+    server frontend_dev:${FRONT_CONTAINER_PORT};
+}
+
+server {
+    listen 80;
+    server_name ${SERVER_ADDRESS};
+
+    # Redirect HTTP to HTTPS
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen ${NGINX_PORT} ssl;
+    server_name ${SERVER_ADDRESS};
+
+    ssl_certificate /etc/nginx/ssl/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/nginx/ssl/nginx-selfsigned.key;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers 'TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-RSA-AES256-SHA:!DSS';
+    ssl_prefer_server_ciphers on;
+
+    client_max_body_size 10485760000; # 10GB
+
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log;
+
+    location / {
+        client_max_body_size 5g;
+        allow all;
+        proxy_pass http://frontend;
+        proxy_connect_timeout 3600;
+        proxy_send_timeout 3600;
+        proxy_read_timeout 3600;
+    }
+
+    location ~ /api {
+        client_max_body_size 5g;
+        include uwsgi_params;
+        uwsgi_pass unix:///tmp/uwsgi.sock;
+        uwsgi_read_timeout 3600;
+        uwsgi_send_timeout 3600;
+        proxy_read_timeout 3600;
+        proxy_connect_timeout 3600;
+        proxy_send_timeout 3600;
+        send_timeout 3600;
+    }
+
+    location /output_txt_files {
+        alias /var/www/ai_server/output_txt_files;
+        autoindex on;
+        types {
+            text/plain txt;
+        }
+        default_type application/octet-stream;
+        add_header Content-Disposition "attachment";
+    }
+
+    error_page 500 502 503 504 /50x.html;
+
+    location = /50x.html {
+        root /usr/share/nginx/html;
+    }
+}

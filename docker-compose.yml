@@ -7,10 +7,10 @@ services:
     container_name: mysql_container
     hostname: mysql_host
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: sound_files_db
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
     ports:
-      - "3307:3306"
+      - "${MYSQL_PORT}:${MYSQL_CONTAINER_PORT}"
     volumes:
       - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
@@ -27,9 +27,11 @@ services:
     container_name: scaling_balancer_container
     environment:
       FLASK_ENV: development
-      UPSTREAM_SERVERS: "127.0.0.1:5004"
+      UPSTREAM_SERVERS: "127.0.0.1:${AI_SERVER_CONTAINER_PORT}"
+      host_current_dir: ${host_current_dir}
+      scaling_balancer_CONTAINER_PORT: ${scaling_balancer_CONTAINER_PORT}
     ports:
-      - "5003:5003"
+      - "${scaling_balancer_CONTAINER_PORT}:${scaling_balancer_CONTAINER_PORT}"
     depends_on:
       mysql:
         condition: service_healthy
@@ -51,11 +53,9 @@ services:
         condition: service_started
       translation:
         condition: service_started
-    environment:
-      DB_HOST: mysql_host
-      DB_USER: root
-      DB_PASSWORD: root
-      DB_NAME: sound_files_db
+    env_file: .env
+    ports:
+      - "${request_counter_CONTAINER_PORT}:${request_counter_CONTAINER_PORT}"
     networks:
       - aibt_network
 
@@ -70,13 +70,9 @@ services:
         condition: service_started
       translation:
         condition: service_started
-    environment:
-      DB_HOST: mysql_host
-      DB_USER: root
-      DB_PASSWORD: root
-      DB_NAME: sound_files_db
+    env_file: .env
     ports:
-      - "5005:5005"
+      - "${db_to_queue_CONTAINER_PORT}:${db_to_queue_CONTAINER_PORT}"
     networks:
       - aibt_network
 
@@ -88,20 +84,15 @@ services:
       mysql:
         condition: service_healthy
     ports:
-      - "5004:5004"
+      - "${AI_SERVER_CONTAINER_PORT}:${AI_SERVER_CONTAINER_PORT}"
     volumes:
       - ./ai_server:/var/www/ai_server
-      - ./ai_server/input_audio_files:/mnt/input_audio_files
-      # - ./ai_server/output_txt_files://ai_server/output_txt_files
-      # - ./ai_server/logs:/logs
+      - ./backend/input_audio_files:/mnt/input_audio_files
     tty: true
     environment:
-      DB_HOST: mysql_host
-      DB_USER: root
-      DB_PASSWORD: root
-      DB_NAME: sound_files_db
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    env_file: .env
     deploy:
       resources:
         reservations:
@@ -113,6 +104,62 @@ services:
     networks:
       - aibt_network
 
+  frontend:
+    container_name: frontend_dev
+    build: ./frontend
+    ports:
+      - "${FRONT_CONTAINER_PORT}:${FRONT_CONTAINER_PORT}"
+    volumes:
+      - ./frontend:/var/www/frontend
+    env_file: .env
+    environment:
+      - NODE_ENV=development
+    networks:
+      - aibt_network
+
+  backend:
+    container_name: backend_dev
+    build: ./backend
+    ports:
+      - "${BACKEND_CONTAINER_PORT}:${BACKEND_CONTAINER_PORT}"
+    command: uwsgi --ini /var/www/backend/uwsgi.ini
+    volumes:
+      - ./backend:/var/www/backend
+      - /var/run/docker.sock:/var/run/docker.sock
+      - socket:/tmp
+    tty: true
+    depends_on:
+      - mysql
+      - frontend
+    env_file: .env
+    networks:
+      - aibt_network
+
+  nginx:
+    image: nginx:1.24
+    container_name: nginx-dev
+    env_file: .env
+    networks:
+      - aibt_network
+    volumes:
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./nginx:/etc/nginx/templates
+      - ./backend:/var/www/backend
+      - ./ai_server:/var/www/ai_server
+      - ./nginx/log:/var/log/nginx
+      - ./nginx/html:/usr/share/nginx/html
+      - socket:/tmp
+    ports:
+      - "${NGINX_PORT}:${NGINX_PORT}"
+    depends_on:
+      - frontend
+      - backend
+    tty: true
+
 networks:
   aibt_network:
     external: true
+
+volumes:
+  socket:
+    name: socket_volume

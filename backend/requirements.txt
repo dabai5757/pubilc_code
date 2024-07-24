@@ -1,0 +1,12 @@
+flask==3.0.2
+# faster_whisper==1
+numba
+flask_cors
+mysql-connector-python==8.3.0
+uwsgi==2.0.24
+
+# tiny
+# openai-whisper==20231117
+
+# tiny
+# ffmpeg==1.4

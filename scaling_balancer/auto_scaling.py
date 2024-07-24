@@ -17,6 +17,12 @@ target_count = 0
 image_name = "translation"
 network_name = "aibt_network"
 
+# 获取绝对路径
+current_dir = os.getenv("host_current_dir")
+backend_path = os.path.join(current_dir, 'backend')
+input_audio_files_path = os.path.join(backend_path, 'input_audio_files')
+ai_server_path = os.path.join(current_dir, 'ai_server')
+
 container_task_counts = defaultdict(int)
 container_futures = defaultdict(list)
 current_container_index = 0
@@ -40,15 +46,9 @@ def check_port(ip, port, retries=5, delay=3):
     s.close()
     return False
 
-# 获取绝对路径
-current_dir = '/home/sudouser/project/gpu_test'
-ai_server_path = os.path.join(current_dir, 'ai_server')
-
-input_audio_files_path = os.path.join(ai_server_path, 'input_audio_files')
-
 # 输出路径到日志
 logging.info(f"Current directory: {current_dir}")
-logging.info(f"ai_server_path: {ai_server_path}")
+logging.info(f"backend_path: {backend_path}")
 logging.info(f"input_audio_files_path: {input_audio_files_path}")
 
 def start_container(client, image_name, index, network_name):
@@ -179,13 +179,13 @@ def update_nginx_conf(container_ips):
     nginx_conf_path = '/app/nginx/nginx.conf'
     upstream_servers = "\n    ".join([f"server {ip}:5004;" for ip in container_ips])
     config_content = f"""
-upstream backend {{
+upstream ai_modes {{
     {upstream_servers}
 }}
 server {{
     listen 80;
     location / {{
-        proxy_pass http://backend;
+        proxy_pass http://ai_modes;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -203,7 +203,7 @@ server {{
 
 def proxy_request(container_ip, audio_id, file_name, container_name):
     logging.info(f"Sending audio_id {audio_id} with file_name {file_name} to container {container_ip}")
-    url = f"http://{container_ip}:5004/sleep"
+    url = f"http://{container_ip}:5004/ai_mode"
     try:
         start_time = time.time()
         response = requests.post(url, json={"audio_id": audio_id, "file_name": file_name})
@@ -298,6 +298,10 @@ def get_tasks_status():
     with lock:
         return jsonify({"task_counts": dict(container_task_counts)}), 200
 
+port = int(os.getenv("scaling_balancer_CONTAINER_PORT"))
+if port is None:
+    raise ValueError("scaling_balancer_CONTAINER_PORT environment variable is not set")
+
 if __name__ == "__main__":
     logging.info("Starting Flask app")
-    app.run(debug=True, host='0.0.0.0', port=5003)
+    app.run(debug=True, host='0.0.0.0', port=port)
