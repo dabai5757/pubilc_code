@@ -1,4 +1,0 @@
-mysql-connector-python
-python-dotenv
-openai==0.28
-async-timeout

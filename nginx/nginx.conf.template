@@ -35,24 +35,24 @@ server {
     error_log /var/log/nginx/error.log;
 
     location / {
-        client_max_body_size 5g;
+        client_max_body_size 10g;
         allow all;
         proxy_pass http://frontend;
-        proxy_connect_timeout 3600;
-        proxy_send_timeout 3600;
-        proxy_read_timeout 3600;
+        proxy_connect_timeout ${TIMEOUT};
+        proxy_send_timeout ${TIMEOUT};
+        proxy_read_timeout ${TIMEOUT};
     }
 
     location ~ /api {
         client_max_body_size 5g;
         include uwsgi_params;
         uwsgi_pass unix:///tmp/uwsgi.sock;
-        uwsgi_read_timeout 3600;
-        uwsgi_send_timeout 3600;
-        proxy_read_timeout 3600;
-        proxy_connect_timeout 3600;
-        proxy_send_timeout 3600;
-        send_timeout 3600;
+        uwsgi_read_timeout ${TIMEOUT};
+        uwsgi_send_timeout ${TIMEOUT};
+        proxy_read_timeout ${TIMEOUT};
+        proxy_connect_timeout ${TIMEOUT};
+        proxy_send_timeout ${TIMEOUT};
+        send_timeout ${TIMEOUT};
     }
 
     location /output_txt_files {
@@ -71,6 +71,10 @@ server {
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_connect_timeout       ${TIMEOUT};
+            proxy_send_timeout          ${TIMEOUT};
+            proxy_read_timeout          ${TIMEOUT};
+            send_timeout                ${TIMEOUT};
         }
 
     error_page 500 502 503 504 /50x.html;

@@ -13,10 +13,9 @@ const App = () => {
   const [isTranslating, setIsTranslating] = useState(false);
   const [audioIds, setAudioIds] = useState({});
   const fileInputRef = useRef(null);
-  const pollInterval = 1000;  // 轮询间隔时间（毫秒）
+  const pollInterval = 1000;
 
   useEffect(() => {
-    // 请求通知权限
     if (Notification.permission === "default") {
       Notification.requestPermission();
     }

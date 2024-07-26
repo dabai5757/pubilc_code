@@ -7,7 +7,6 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-# MySQL数据库配置
 DB_CONFIG = {
     'user': os.getenv('DB_USER'),
     'password': os.getenv('DB_PASSWORD'),
@@ -19,15 +18,14 @@ DB_CONFIG = {
 SERVER_ADDRESS = os.getenv("SERVER_ADDRESS", "192.168.10.9")
 NGINX_PORT = int(os.getenv("NGINX_PORT", 33380))
 
-CONCURRENT_REQUESTS = 2
-QUEUE_MAX_SIZE = 3
+CONCURRENT_REQUESTS = 6
+QUEUE_MAX_SIZE = 6
 CHECK_INTERVAL = 5
 
 AI_SERVER_CONTAINER_PORT = int(os.getenv("AI_SERVER_CONTAINER_PORT"))
 if AI_SERVER_CONTAINER_PORT is None:
     raise ValueError("AI_SERVER_CONTAINER_PORT environment variable is not set")
 
-# API_URL = f"http://translation_1:{AI_SERVER_CONTAINER_PORT}/ai_mode"
 API_URL = f"https://{SERVER_ADDRESS}:{NGINX_PORT}/ai_mode"
 
 async def fetch_pending_tasks(queue):

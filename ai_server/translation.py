@@ -34,7 +34,6 @@ duration_lock = Lock()
 os.environ["PYTHONIOENCODING"] = "UTF-8"
 count = 0
 
-# 配置日志
 logging.basicConfig(level=logging.INFO)
 
 try:
@@ -54,7 +53,6 @@ NGINX_PORT = os.getenv('NGINX_PORT', '33380')
 SERVER_ADDRESS = os.getenv('SERVER_ADDRESS', '192.168.10.9')
 API_BASE_URL = f"https://{SERVER_ADDRESS}:{NGINX_PORT}"
 
-# MySQL数据库配置
 DB_CONFIG = {
     'user': os.getenv('DB_USER'),
     'password': os.getenv('DB_PASSWORD'),
@@ -64,13 +62,11 @@ DB_CONFIG = {
 }
 
 def get_container_ip():
-    """获取容器的IP地址"""
     hostname = socket.gethostname()
     ip_address = socket.gethostbyname(hostname)
     return ip_address
 
 def update_task_status(task_id, status, out_filename):
-    """更新数据库中任务的状态"""
     conn = None
     try:
         conn = pymysql.connect(**DB_CONFIG)
@@ -88,7 +84,7 @@ def handle_task(audio_id, file_name, container_ip, start_time_str):
     try:
         audio_path = os.path.join("/mnt/input_audio_files", file_name)
 
-        logging.info(f"处理开始，任务ID-{audio_id}，容器IP-{container_ip}，开始时间-{start_time_str}")
+        logging.info(f"処理開始ID-{audio_id}，容器IP-{container_ip}，開始時間-{start_time_str}")
 
         out_filename = generate_output_filename(file_name)
 
@@ -96,7 +92,7 @@ def handle_task(audio_id, file_name, container_ip, start_time_str):
 
         end_time = time.time()
         end_time_str = datetime.fromtimestamp(end_time).strftime('%Y-%m-%d %H:%M:%S')
-        logging.info(f"处理结束，任务ID-{audio_id}，容器IP-{container_ip}，结束时间-{end_time_str}")
+        logging.info(f"処理完了ID-{audio_id}，コンテナIP-{container_ip}，完了時間-{end_time_str}")
 
         result_url = f"{API_BASE_URL}/output_txt_files/{out_filename}"
         update_task_status(audio_id, 'completed', result_url)
@@ -117,7 +113,6 @@ def ai_mode():
         start_time_str = datetime.fromtimestamp(start_time).strftime('%Y-%m-%d %H:%M:%S')
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
-        # with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
             future = executor.submit(handle_task, audio_id, file_name, container_ip, start_time_str)
             transcription_path, error = future.result()
 
@@ -128,17 +123,14 @@ def ai_mode():
         else:
             return {"error": error}, 500
     else:
-        return {"error": "请提供一个有效的整数ID和音频文件"}, 400
+        return {"error": "引数エラー"}, 400
 
-# 在程序启动时加载模型
 def get_audio_model():
     global audio_model
     if audio_model is None:
         try:
             local_model_path = "/app/models/faster_whisper_large_v2"
             audio_model = WhisperModel(local_model_path, device="cuda", compute_type="float16", local_files_only=True)
-            # audio_model = ctranslate2.models.Whisper(local_model_path, device="cuda", compute_type="float16")
-            # audio_model = WhisperModel("large-v2", device="cuda", num_workers=4, cpu_threads=8)
         except RuntimeError as e:
             logging.error(f"Failed to load model: {e}")
             raise e
@@ -231,7 +223,6 @@ def _transcribe_faster_whisperlib_model(in_filepath, model, device, language=Non
     try:
         with transcribe_lock:
             logging.debug("Starting transcription")
-            # audio_model = get_audio_model()
             segments, info = audio_model.transcribe(in_filepath, language=language, initial_prompt=initial_prompt)
             logging.debug("Transcription completed")
             logging.debug(f"Transcription segments: {segments}")
@@ -312,6 +303,6 @@ def serve_static(filename):
         return jsonify({"error": "File not found"}), 404
 
 if __name__ == '__main__':
-    device = "cuda"  # 如果需要使用GPU，则设置为 "cuda"
+    device = "cuda"
     audio_model = get_audio_model()
     app.run(host='0.0.0.0', port=5004)

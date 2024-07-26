@@ -13,9 +13,6 @@ RUN apt-get update \
         libgl1 \
     && rm -rf /var/lib/apt/lists/*
 
-# tiny
-# RUN apt-get update && apt-get install -y ffmpeg
-
 COPY requirements.txt .
 
 RUN pip install --upgrade pip && \

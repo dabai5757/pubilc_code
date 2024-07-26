@@ -39,16 +39,11 @@ transcribe_duration = 0  # transcribeの滞在時間を保存するグローバ�
 transcribe_lock = Lock() # transcribe関数を保護するためのロックを作成
 duration_lock = Lock()   # 滞在時間を保護するためのロックを作成
 
-
 TABLE_TRANSLATION="sound_files"
 DATABASE="sound_files_db"
 HOST = os.getenv("DB_HOST")
 PORT = os.getenv("MYSQL_CONTAINER_PORT")
 PASSWORD = os.getenv("DB_PASSWORD")
-
-# HOST = "127.0.0.1"
-# PORT = 3307
-# PASSWORD = "root"
 
 count = 0
 MAX_RETRIES = 3
