@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file, send_from_directory
+from flask import Flask, request, jsonify, send_file, send_from_directory, make_response
 from multiprocessing import Lock
 from datetime import datetime
 from flask_cors import CORS
@@ -122,7 +122,9 @@ def ai_mode():
             transcription_path, error = future.result()
 
         if transcription_path:
-            return send_file(transcription_path, as_attachment=True)
+            response = make_response(send_file(transcription_path, as_attachment=True))
+            response.status_code = 202
+            return response
         else:
             return {"error": error}, 500
     else:

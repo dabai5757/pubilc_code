@@ -21,90 +21,6 @@ services:
       timeout: 5s
       retries: 5
 
-  scaling_balancer:
-    build: ./scaling_balancer
-    image: image_scaling_balancer
-    container_name: scaling_balancer_container
-    environment:
-      FLASK_ENV: development
-      UPSTREAM_SERVERS: "127.0.0.1:${AI_SERVER_CONTAINER_PORT}"
-      host_current_dir: ${host_current_dir}
-      scaling_balancer_CONTAINER_PORT: ${scaling_balancer_CONTAINER_PORT}
-    ports:
-      - "${scaling_balancer_CONTAINER_PORT}:${scaling_balancer_CONTAINER_PORT}"
-    depends_on:
-      mysql:
-        condition: service_healthy
-      translation:
-        condition: service_started
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    networks:
-      - aibt_network
-
-  request_counter:
-    build: ./request_counter
-    image: image_request_counter
-    container_name: request_counter_containers
-    depends_on:
-      mysql:
-        condition: service_healthy
-      scaling_balancer:
-        condition: service_started
-      translation:
-        condition: service_started
-    env_file: .env
-    ports:
-      - "${request_counter_CONTAINER_PORT}:${request_counter_CONTAINER_PORT}"
-    networks:
-      - aibt_network
-
-  db_to_queue:
-    build: ./db_to_queue
-    image: image_db_to_queue
-    container_name: db_to_queue_containers
-    depends_on:
-      mysql:
-        condition: service_healthy
-      scaling_balancer:
-        condition: service_started
-      translation:
-        condition: service_started
-    env_file: .env
-    ports:
-      - "${db_to_queue_CONTAINER_PORT}:${db_to_queue_CONTAINER_PORT}"
-    networks:
-      - aibt_network
-
-  translation:
-    build: ./ai_server
-    image: translation
-    container_name: translation_1
-    depends_on:
-      mysql:
-        condition: service_healthy
-    ports:
-      - "${AI_SERVER_CONTAINER_PORT}:${AI_SERVER_CONTAINER_PORT}"
-    volumes:
-      - ./ai_server:/var/www/ai_server
-      - ./backend/input_audio_files:/mnt/input_audio_files
-      - /mnt/d/Transcription/Systranfaster_whisper_large_v2:/app/models/faster_whisper_large_v2
-    tty: true
-    environment:
-      NVIDIA_VISIBLE_DEVICES: all
-      NVIDIA_DRIVER_CAPABILITIES: compute,utility
-    env_file: .env
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    runtime: nvidia
-    networks:
-      - aibt_network
-
   frontend:
     container_name: frontend_dev
     build: ./frontend
@@ -131,7 +47,6 @@ services:
     tty: true
     depends_on:
       - mysql
-      - frontend
     env_file: .env
     networks:
       - aibt_network
@@ -153,9 +68,117 @@ services:
     ports:
       - "${NGINX_PORT}:${NGINX_PORT}"
     depends_on:
+      - translation_1
+      - translation_2
+      - translation_3
       - frontend
-      - backend
     tty: true
+
+  db_to_queue:
+    build: ./db_to_queue
+    image: image_db_to_queue
+    container_name: db_to_queue_containers
+    depends_on:
+      mysql:
+        condition: service_healthy
+      translation_1:
+        condition: service_started
+      translation_2:
+        condition: service_started
+      translation_3:
+        condition: service_started
+    env_file: .env
+    ports:
+      - "${db_to_queue_CONTAINER_PORT}:${db_to_queue_CONTAINER_PORT}"
+    networks:
+      - aibt_network
+
+  translation_1:
+    build: ./ai_server
+    image: translation
+    container_name: translation_1
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "5002:5004"
+    volumes:
+      - ./ai_server:/var/www/ai_server
+      - ./backend/input_audio_files:/mnt/input_audio_files
+      - /mnt/d/Transcription/Systranfaster_whisper_large_v2:/app/models/faster_whisper_large_v2
+    tty: true
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    env_file: .env
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    runtime: nvidia
+    networks:
+      - aibt_network
+
+  translation_2:
+    build: ./ai_server
+    image: translation
+    container_name: translation_2
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "5003:5004"
+    volumes:
+      - ./ai_server:/var/www/ai_server
+      - ./backend/input_audio_files:/mnt/input_audio_files
+      - /mnt/d/Transcription/Systranfaster_whisper_large_v2:/app/models/faster_whisper_large_v2
+    tty: true
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    env_file: .env
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    runtime: nvidia
+    networks:
+      - aibt_network
+
+  translation_3:
+    build: ./ai_server
+    image: translation
+    container_name: translation_3
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "5004:5004"
+    volumes:
+      - ./ai_server:/var/www/ai_server
+      - ./backend/input_audio_files:/mnt/input_audio_files
+      - /mnt/d/Transcription/Systranfaster_whisper_large_v2:/app/models/faster_whisper_large_v2
+    tty: true
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    env_file: .env
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    runtime: nvidia
+    networks:
+      - aibt_network
 
 networks:
   aibt_network:

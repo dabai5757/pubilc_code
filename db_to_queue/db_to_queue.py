@@ -1,6 +1,7 @@
 import asyncio
 import aiomysql
 import aiohttp
+import ssl
 import os
 import logging
 
@@ -15,14 +16,19 @@ DB_CONFIG = {
     'port': 3306
 }
 
-QUEUE_MAX_SIZE = 30
-CHECK_INTERVAL = 5  # in seconds
+SERVER_ADDRESS = os.getenv("SERVER_ADDRESS", "192.168.10.9")
+NGINX_PORT = int(os.getenv("NGINX_PORT", 33380))
 
-scaling_balancer_CONTAINER_PORT = int(os.getenv("scaling_balancer_CONTAINER_PORT"))
-if scaling_balancer_CONTAINER_PORT is None:
-    raise ValueError("scaling_balancer_CONTAINER_PORT environment variable is not set")
+CONCURRENT_REQUESTS = 2
+QUEUE_MAX_SIZE = 3
+CHECK_INTERVAL = 5
 
-API_URL = f"http://scaling_balancer:{scaling_balancer_CONTAINER_PORT}/add_task"  # 使用 Docker Compose 中的服务名称
+AI_SERVER_CONTAINER_PORT = int(os.getenv("AI_SERVER_CONTAINER_PORT"))
+if AI_SERVER_CONTAINER_PORT is None:
+    raise ValueError("AI_SERVER_CONTAINER_PORT environment variable is not set")
+
+# API_URL = f"http://translation_1:{AI_SERVER_CONTAINER_PORT}/ai_mode"
+API_URL = f"https://{SERVER_ADDRESS}:{NGINX_PORT}/ai_mode"
 
 async def fetch_pending_tasks(queue):
     while True:
@@ -30,12 +36,13 @@ async def fetch_pending_tasks(queue):
             try:
                 conn = await aiomysql.connect(**DB_CONFIG)
                 async with conn.cursor() as cur:
-                    await cur.execute("SELECT audio_id, file_name FROM sound_files WHERE status='pending' LIMIT %s", (QUEUE_MAX_SIZE - queue.qsize(),))
+                    await cur.execute("SELECT audio_id, file_name FROM sound_files WHERE status='pending' ORDER BY upload_time ASC LIMIT %s",
+                        (QUEUE_MAX_SIZE - queue.qsize(),))
                     tasks = await cur.fetchall()
                     for task in tasks:
                         await cur.execute("UPDATE sound_files SET status='processing' WHERE audio_id=%s", (task[0],))
                         await conn.commit()
-                        await queue.put((task[0], task[1]))  # 将 (audio_id, file_name) 元组放入队列
+                        await queue.put((task[0], task[1]))
                         logging.info(f"Task {task[0]} added to queue with file_name {task[1]}. Queue size is now {queue.qsize()}")
             except Exception as e:
                 logging.error(f"Error fetching tasks from database: {e}")
@@ -45,10 +52,10 @@ async def fetch_pending_tasks(queue):
             logging.info("Queue is full, waiting for space to become available.")
         await asyncio.sleep(CHECK_INTERVAL)
 
-async def process_queue(queue):
-    async with aiohttp.ClientSession() as session:
-        while True:
-            audio_id, file_name = await queue.get()  # 从队列中获取 (audio_id, file_name) 元组
+async def process_task(queue, semaphore, session):
+    while True:
+        async with semaphore:
+            audio_id, file_name = await queue.get()
             logging.info(f"Processing task {audio_id} with file_name {file_name}. Queue size before processing: {queue.qsize()}")
             try:
                 async with session.post(API_URL, json={"audio_id": audio_id, "file_name": file_name}) as response:
@@ -62,15 +69,24 @@ async def process_queue(queue):
             queue.task_done()
             logging.info(f"Finished processing task {audio_id} with file_name {file_name}. Queue size after processing: {queue.qsize()}")
 
+async def process_queue(queue):
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    connector = aiohttp.TCPConnector(ssl=ssl_context)
+
+    semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
+    async with aiohttp.ClientSession(connector=connector) as session:
+        tasks = []
+        for _ in range(QUEUE_MAX_SIZE):
+            task = asyncio.create_task(process_task(queue, semaphore, session))
+            tasks.append(task)
+        await asyncio.gather(*tasks)
+
 async def main():
     queue = asyncio.Queue(maxsize=QUEUE_MAX_SIZE)
-
-    # 启动任务获取器
     fetch_task = asyncio.create_task(fetch_pending_tasks(queue))
-
-    # 启动队列处理器
     process_task = asyncio.create_task(process_queue(queue))
-
     await asyncio.gather(fetch_task, process_task)
 
 if __name__ == "__main__":
