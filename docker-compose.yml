@@ -88,6 +88,7 @@ services:
     volumes:
       - ./ai_server:/var/www/ai_server
       - ./backend/input_audio_files:/mnt/input_audio_files
+      - /mnt/d/Transcription/Systranfaster_whisper_large_v2:/app/models/faster_whisper_large_v2
     tty: true
     environment:
       NVIDIA_VISIBLE_DEVICES: all
@@ -137,7 +138,7 @@ services:
 
   nginx:
     image: nginx:1.24
-    container_name: nginx-dev
+    container_name: aibt_nginx-dev
     env_file: .env
     networks:
       - aibt_network

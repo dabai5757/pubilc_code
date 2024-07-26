@@ -22,6 +22,7 @@ current_dir = os.getenv("host_current_dir")
 backend_path = os.path.join(current_dir, 'backend')
 input_audio_files_path = os.path.join(backend_path, 'input_audio_files')
 ai_server_path = os.path.join(current_dir, 'ai_server')
+local_mode = '/mnt/d/Transcription/Systranfaster_whisper_large_v2'
 
 container_task_counts = defaultdict(int)
 container_futures = defaultdict(list)
@@ -78,7 +79,8 @@ def start_container(client, image_name, index, network_name):
             },
             volumes={
                 ai_server_path: {'bind': '/var/www/ai_server', 'mode': 'rw'},
-                input_audio_files_path: {'bind': '/mnt/input_audio_files', 'mode': 'rw'}
+                input_audio_files_path: {'bind': '/mnt/input_audio_files', 'mode': 'rw'},
+                local_mode: {'bind': '/app/models/faster_whisper_large_v2', 'mode': 'rw'}
             },
             device_requests=device_requests,  # 添加设备请求以使用 GPU
             runtime='nvidia',  # 指定 nvidia 运行时

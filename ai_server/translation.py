@@ -16,6 +16,7 @@ import sys
 import math
 import psutil
 import concurrent.futures
+import ctranslate2
 
 warnings.filterwarnings('ignore', category=NumbaDeprecationWarning)
 warnings.filterwarnings("ignore", "FP16 is not supported on CPU; using FP32 instead")
@@ -116,6 +117,7 @@ def ai_mode():
         start_time_str = datetime.fromtimestamp(start_time).strftime('%Y-%m-%d %H:%M:%S')
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
+        # with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
             future = executor.submit(handle_task, audio_id, file_name, container_ip, start_time_str)
             transcription_path, error = future.result()
 
@@ -130,7 +132,14 @@ def ai_mode():
 def get_audio_model():
     global audio_model
     if audio_model is None:
-        audio_model = WhisperModel("large-v2", device="cuda", num_workers=4, cpu_threads=4)
+        try:
+            local_model_path = "/app/models/faster_whisper_large_v2"
+            audio_model = WhisperModel(local_model_path, device="cuda", compute_type="float16", local_files_only=True)
+            # audio_model = ctranslate2.models.Whisper(local_model_path, device="cuda", compute_type="float16")
+            # audio_model = WhisperModel("large-v2", device="cuda", num_workers=4, cpu_threads=8)
+        except RuntimeError as e:
+            logging.error(f"Failed to load model: {e}")
+            raise e
     return audio_model
 
 def cmd_transcribe(model, device, in_filepath, out_filename, language, initial_prompt, verbose, dtime, list):

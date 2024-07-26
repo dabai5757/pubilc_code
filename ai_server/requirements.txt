@@ -8,3 +8,4 @@ numba
 flask_cors
 psutil
 openai-whisper
+ctranslate2>=3.14.0
