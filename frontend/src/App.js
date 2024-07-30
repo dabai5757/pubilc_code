@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import "./App.css";
 
+import { FaUser } from 'react-icons/fa'; // FontAwesome 用户图标
+
 const SERVER_ADDRESS = process.env.REACT_APP_SERVER_ADDRESS;
 const NGINX_PORT = process.env.REACT_APP_NGINX_PORT;
 const API_BASE_URL = `https://${SERVER_ADDRESS}:${NGINX_PORT}`;
@@ -12,6 +14,8 @@ const App = () => {
   const [estimatedTime, setEstimatedTime] = useState("");
   const [isTranslating, setIsTranslating] = useState(false);
   const [audioIds, setAudioIds] = useState({});
+  const [username, setUsername] = useState(""); // 新增状态保存用户名
+  const [isResultsOpen, setIsResultsOpen] = useState(false); // 用于管理 "翻译结果" 的显示状态
   const fileInputRef = useRef(null);
   const pollInterval = 1000;
 
@@ -19,11 +23,29 @@ const App = () => {
     if (Notification.permission === "default") {
       Notification.requestPermission();
     }
+
+    // 解析 URL 查询参数
+    const urlParams = new URLSearchParams(window.location.search);
+    const usernameFromURL = urlParams.get('username');
+    if (usernameFromURL) {
+      setUsername(usernameFromURL); // 设置用户名状态
+    }
   }, []);
+
+  const handleLogout = () => {
+    // 清除相关状态或会话信息
+    setUsername("");
+    // 重定向到登录页面或指定的 URL
+    window.location.href = "https://192.168.10.9:33380/sso_ui/";
+  };
 
   const handleFileChange = (event) => {
     const files = Array.from(event.target.files);
     updateFileList(files);
+  };
+
+  const toggleResults = () => {
+    setIsResultsOpen(!isResultsOpen);
   };
 
   const updateFileList = async (files) => {
@@ -219,6 +241,29 @@ const App = () => {
   return (
     <div className="container">
       <h1>音声ファイルの文字起こし</h1>
+      <div className="header">
+        <button onClick={toggleResults} className="results-button">翻訳結果</button>
+        {username && (
+          <>
+            <div className="user-icon">
+              <FaUser />
+              <span className="username">{username}</span>
+            </div>
+            <button onClick={handleLogout} className="logout-button">Logout</button>
+          </>
+        )}
+      </div>
+
+      {isResultsOpen && (
+        <div className="modal">
+          <div className="modal-content">
+            <span className="close" onClick={toggleResults}>&times;</span>
+            <h2>翻訳結果</h2>
+            <p>ここに翻訳された内容が表示されます。</p>
+            {/* 可以在这里添加实际的翻译结果内容 */}
+          </div>
+        </div>
+      )}
       <div className="file-path-container">
         <label htmlFor="fileInput" id="browseButton" className="file-input-label">
           ファイル選択

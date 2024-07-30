@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Page</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-box">
+            <div class="logo">Audio Translator</div>
+            <h2>Sign in to AIBT</h2>
+            <button class="login-btn github" onclick="continueWithGitHub()">
+                <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub logo">
+                Sign in with GitHub
+            </button>
+            <button class="login-btn ad">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="Microsoft logo">
+                Sign in with Active Directory
+            </button>
+            <div class="divider"></div>
+            <div class="email-signin-text">Sign in with email</div>
+            <form>
+                <label for="email">Email</label>
+                <input type="email" id="email" required>
+                <label for="password">Password</label>
+                <input type="password" id="password" required>
+                <button type="submit" class="login-btn email">Sign in to AIBT</button>
+            </form>
+            <a href="#" class="forgot-password">Forgot password?</a>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

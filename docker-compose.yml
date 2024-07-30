@@ -1,6 +1,27 @@
 version: '3.8'
 
 services:
+
+  sso_ui:
+    build:
+      context: ./sso_ui
+    container_name: sso_ui_dev
+    ports:
+      - "3100:3100"
+    networks:
+      - aibt_network
+
+  sso_login:
+    build:
+      context: ./sso_login
+    container_name: sso_login_dev
+    ports:
+      - "5010:5010"
+    environment:
+      - FLASK_ENV=development
+    networks:
+      - aibt_network
+
   mysql:
     build: ./sql
     image: image_sql
@@ -65,6 +86,9 @@ services:
       - ./nginx/log:/var/log/nginx
       - ./nginx/html:/usr/share/nginx/html
       - socket:/tmp
+      - ./sso_ui:/usr/share/nginx/html/sso_ui
+      - ./cert.pem:/etc/nginx/cert.pem
+      - ./key.pem:/etc/nginx/key.pem
     ports:
       - "${NGINX_PORT}:${NGINX_PORT}"
     depends_on:

@@ -1,4 +1,9 @@
 # Define upstream server
+
+upstream sso_login {
+    server sso_login_dev:5010;
+}
+
 upstream frontend {
     server frontend_dev:${FRONT_CONTAINER_PORT};
 }
@@ -34,13 +39,64 @@ server {
     access_log /var/log/nginx/access.log;
     error_log /var/log/nginx/error.log;
 
-    location / {
-        client_max_body_size 10g;
-        allow all;
-        proxy_pass http://frontend;
+    location /sso_ui {
+        alias /usr/share/nginx/html/sso_ui/;
+        index index.html;
         proxy_connect_timeout ${TIMEOUT};
         proxy_send_timeout ${TIMEOUT};
         proxy_read_timeout ${TIMEOUT};
+    }
+
+    location /sso_login {
+        client_max_body_size 10g;
+        allow all;
+        proxy_pass http://sso_login/login;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_redirect off;
+        proxy_connect_timeout ${TIMEOUT};
+        proxy_send_timeout ${TIMEOUT};
+        proxy_read_timeout ${TIMEOUT};
+    }
+
+    location /login/authorized {
+        proxy_pass http://sso_login;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+
+    # 认证检查的内部位置
+    location = /auth/check {
+        internal;
+        proxy_pass http://sso_login;  # 替换为 Flask 应用地址
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # 主路径的访问控制
+    location / {
+        auth_request /auth/check;  # 调用认证检查
+
+        # 如果认证检查返回 401，则返回 403 Forbidden
+        error_page 401 = @error401;
+
+        # 代理到前端应用
+        proxy_pass http://frontend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # 未通过认证时的处理
+    location @error401 {
+        return 302 https://192.168.10.9:33380/sso_ui/;  # 重定向到登录页面
     }
 
     location ~ /api {
