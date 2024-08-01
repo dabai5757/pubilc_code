@@ -11,8 +11,8 @@ upstream frontend {
 upstream translation_service {
         least_conn;
         server translation_1:5004;
-        server translation_2:5004;
-        server translation_3:5004;
+        # server translation_2:5004;
+        # server translation_3:5004;
 }
 
 server {
@@ -92,11 +92,23 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Proto https;
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0";
+        add_header Pragma "no-cache";
+        add_header Expires "0";
     }
 
     # 未通过认证时的处理
     location @error401 {
         return 302 https://192.168.10.9:33380/sso_ui/;  # 重定向到登录页面
+    }
+
+    location /logout {
+        proxy_pass http://sso_login/logout;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
     location ~ /api {
@@ -109,6 +121,18 @@ server {
         proxy_connect_timeout ${TIMEOUT};
         proxy_send_timeout ${TIMEOUT};
         send_timeout ${TIMEOUT};
+    }
+
+    location /protected {
+        # 检查用户是否已认证
+        if ($http_cookie !~* "github_token") {
+            return 302 https://192.168.10.9:33380/sso_ui/;
+        }
+        proxy_pass http://backend/protected;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
     location /output_txt_files {

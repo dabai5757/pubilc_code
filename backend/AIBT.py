@@ -136,6 +136,13 @@ def transcribe_audio():
         # logging.info(f"Audio file copied to: {destination_path}")
         #####################################################################################################
         # mysql
+        # 获取其他数据
+        language = request.form.get('language', '')
+        username = request.form.get('username', '')
+        duration = request.form.get('duration', 0)
+        file_type = request.form.get('file_type', '')
+        format = request.form.get('format', '')
+
         connection = getattr(g, 'connection', None)
         cursor = connection.cursor()
         cursor.execute("""
@@ -151,11 +158,15 @@ def transcribe_audio():
                 `audio_length`,
                 `upload_time`,
                 `result_url`,
-                `translation_time`
+                `translation_time`,
+                `translation_language`,
+                `user_name`,
+                `file_type`,
+                `format`
             ) VALUES (
-                %s, %s, 'pending', NULL, %s, NULL, NULL
+                %s, %s, 'pending', %s, %s, NULL, NULL, %s, %s, %s, %s
             )
-        """, (audio_file_id, audio_filename, upload_time))
+        """, (audio_file_id, audio_filename, duration, upload_time, language, username, file_type, format))
         connection.commit()
         # return audio_file_id
         return jsonify({'audio_file_id': audio_file_id}), 200
@@ -208,6 +219,72 @@ def get_url():
     finally:
         cursor.close()
         connection.close()
+
+@app.route('/api/pending_count', methods=['GET'])
+def get_pending_count():
+    connection = connect_to_database(HOST, DATABASE, PASSWORD, PORT)
+    cursor = connection.cursor()
+    cursor.execute(f"""
+        SELECT COUNT(*) FROM `{TABLE_TRANSLATION}`
+        WHERE `status` IN ('pending', 'processing')
+    """)
+    count_result = cursor.fetchone()
+    count = count_result[0] if count_result else 0
+
+    cursor.close()
+    connection.close()
+
+    return jsonify(count=count)
+
+@app.route('/api/translation_results', methods=['GET'])
+def get_translation_results():
+    username = request.args.get('username')
+    if not username:
+        return jsonify({"error": "Missing username"}), 400
+
+    conn = connect_to_database(HOST, DATABASE, PASSWORD, PORT)
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("""
+        SELECT user_name, file_name, audio_length, file_type, format, status, translation_language, upload_time, result_url
+        FROM sound_files
+        WHERE user_name = %s
+    """, (username,))
+    results = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    return jsonify({"results": results})
+
+@app.route('/api/estimated_completion_time', methods=['GET'])
+def estimated_completion_time():
+    try:
+        conn = connect_to_database(HOST, DATABASE, PASSWORD, PORT)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT SUM(audio_length) as total_length
+            FROM sound_files
+            WHERE status IN ('pending', 'processing')
+        """)
+        total_length = cursor.fetchone()['total_length']
+        cursor.close()
+        conn.close()
+
+        if total_length is None:
+            total_length = 0
+
+        # 计算预计完成时间
+        estimated_seconds = total_length / 8
+        estimated_minutes = estimated_seconds // 60
+        estimated_seconds = estimated_seconds % 60
+
+        now = datetime.now() + timedelta(hours=9)
+        completion_time = now + timedelta(minutes=int(estimated_minutes), seconds=int(estimated_seconds))
+        estimated_time = completion_time.strftime("%H:%M")
+
+        return jsonify({"estimated_time": estimated_time})
+    except Exception as e:
+        logging.error(f"Error calculating estimated completion time: {str(e)}")
+        return jsonify({"error": "Internal Server Error"}), 500
 
 port = int(os.getenv("BACKEND_CONTAINER_PORT"))
 if port is None:

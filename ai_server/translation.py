@@ -66,13 +66,21 @@ def get_container_ip():
     ip_address = socket.gethostbyname(hostname)
     return ip_address
 
-def update_task_status(task_id, status, out_filename):
+def update_task_status(task_id, status, out_filename, start_time, end_time, translation_duration):
     conn = None
     try:
         conn = pymysql.connect(**DB_CONFIG)
         with conn.cursor() as cursor:
-            sql = "UPDATE sound_files SET status=%s, result_url=%s WHERE audio_id=%s"
-            cursor.execute(sql, (status, out_filename, task_id))
+            sql = """
+                UPDATE sound_files
+                SET status=%s,
+                    result_url=%s,
+                    translation_start_time=%s,
+                    translation_end_time=%s,
+                    translation_time=%s
+                WHERE audio_id=%s
+            """
+            cursor.execute(sql, (status, out_filename, start_time, end_time, translation_duration, task_id))
             conn.commit()
     except Exception as e:
         logging.error(f"Failed to update task {task_id} status to {status}: {e}")
@@ -80,22 +88,27 @@ def update_task_status(task_id, status, out_filename):
         if conn:
             conn.close()
 
-def handle_task(audio_id, file_name, container_ip, start_time_str):
+def handle_task(audio_id, file_name, translation_language, format, container_ip, start_time_str):
     try:
         audio_path = os.path.join("/mnt/input_audio_files", file_name)
 
         logging.info(f"処理開始ID-{audio_id}，容器IP-{container_ip}，開始時間-{start_time_str}")
 
-        out_filename = generate_output_filename(file_name)
+        out_filename = generate_output_filename(file_name, format)
 
-        transcription_path = cmd_transcribe('faster-large-v2', 'cuda', audio_path, out_filename, 'Japanese', None, None, None, None)
+        transcription_path = cmd_transcribe('faster-large-v2', 'cuda', audio_path, out_filename, translation_language, None, None, None, None)
 
         end_time = time.time()
         end_time_str = datetime.fromtimestamp(end_time).strftime('%Y-%m-%d %H:%M:%S')
         logging.info(f"処理完了ID-{audio_id}，コンテナIP-{container_ip}，完了時間-{end_time_str}")
 
+        start_time_str = datetime.strptime(start_time_str, '%Y-%m-%d %H:%M:%S')
+        end_time_str = datetime.strptime(end_time_str, '%Y-%m-%d %H:%M:%S')
+        translation_duration = int((end_time_str - start_time_str).total_seconds())
+
         result_url = f"{API_BASE_URL}/output_txt_files/{out_filename}"
-        update_task_status(audio_id, 'completed', result_url)
+        update_task_status(audio_id, 'completed', result_url, start_time_str, end_time_str, translation_duration)
+
         return transcription_path, None
     except Exception as e:
         logging.error(f"Task handling error: {e}")
@@ -106,6 +119,8 @@ def ai_mode():
     data = request.get_json(force=True)
     audio_id = data.get('audio_id')
     file_name = data.get('file_name')
+    translation_language = data.get('translation_language')
+    format = data.get('format')
 
     if audio_id and file_name:
         container_ip = get_container_ip()
@@ -113,7 +128,7 @@ def ai_mode():
         start_time_str = datetime.fromtimestamp(start_time).strftime('%Y-%m-%d %H:%M:%S')
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            future = executor.submit(handle_task, audio_id, file_name, container_ip, start_time_str)
+            future = executor.submit(handle_task, audio_id, file_name, translation_language, format, container_ip, start_time_str)
             transcription_path, error = future.result()
 
         if transcription_path:
@@ -219,7 +234,7 @@ def _transcribe_faster_whisperlib_model(in_filepath, model, device, language=Non
     elif language == "English":
         language = "en"
     elif language == "Chinese":
-        language = "cn"
+        language = "zh"
     try:
         with transcribe_lock:
             logging.debug("Starting transcription")
@@ -288,10 +303,10 @@ def logging_cui(message, file=sys.stdout, is_flush=True, is_print=False, is_log=
         else:
             pass
 
-def generate_output_filename(file_name):
+def generate_output_filename(file_name, format):
     base_filename, _ = os.path.splitext(file_name)
     timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    return f"{base_filename}_{timestamp}.txt"
+    return f"{base_filename}_{timestamp}.{format}"
 
 # 静的ファイルを提供するエンドポイントを定義
 @app.route('/output_txt_files/<path:filename>')

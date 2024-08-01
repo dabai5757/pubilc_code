@@ -44,17 +44,16 @@ def login():
 
 @app.route('/logout')
 def logout():
-    session.pop('github_token', None)
-    return redirect(url_for('index'))
+    session.clear()  # 清除所有会话数据
+    return redirect("https://192.168.10.9:33380/")
 
 @app.route('/login/authorized')
 def authorized():
     response = github.authorized_response()
     if response is None or response.get('access_token') is None:
-        # 使用 .get 方法来避免 KeyError
-        error = request.args.get('error', 'No error provided')
-        error_description = request.args.get('error_description', 'No description provided')
-        return f'Access denied: reason={error} error={error_description}'
+        return 'Access denied: reason={} error={}'.format(
+            request.args.get('error'), request.args.get('error_description')
+        )
 
     # 设置 session 数据
     session['github_token'] = (response['access_token'], '')
@@ -64,12 +63,6 @@ def authorized():
     me = github.get('user')
     # return redirect("https://192.168.10.9:33380")
     return redirect(f"https://192.168.10.9:33380/?username={me.data['login']}")
-    if me:
-        # 如果成功获取用户信息，返回成功消息
-        return f'Logged in as: {me.data["login"]}'
-    else:
-        # 如果未能获取用户信息，返回错误消息
-        return 'Failed to retrieve user information.'
 
 @app.route('/auth/check')
 def auth_check():
@@ -78,6 +71,11 @@ def auth_check():
         return '', 200  # 返回 200 状态表示已认证
     else:
         return '', 401  # 返回 401 状态表示未认证
+
+@app.route('/protected')
+def protected():
+    if 'github_token' not in session:
+        return redirect(url_for('login'))
 
 @github.tokengetter
 def get_github_oauth_token():

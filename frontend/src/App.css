@@ -134,6 +134,11 @@ button:disabled {
   margin-right: 10px;  /* 添加右侧间距 */
 }
 
+.delete-button.disabled {
+  background-color: #c2c9c2; /* 灰色背景 */
+  cursor: not-allowed; /* 不允许的光标 */
+}
+
 .custom-button {
   width: 120px;
   height: 60px;
@@ -155,8 +160,16 @@ button:disabled {
   right: 10px;
 }
 
+.language-select {
+  margin-right: 20px;
+  padding: 5px;
+  font-size: 14px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
 .results-button {
-  margin-right: auto;
+  margin-right: 10px;
   padding: 5px 10px;
   background-color: #007bff;
   color: white;
@@ -173,8 +186,8 @@ button:disabled {
 .user-icon {
   display: flex;
   align-items: center;
-  color: #191a19;
-  margin-left: 30px;
+  color: #080808;
+  margin-left: 20px;
 }
 
 .user-icon .username {
@@ -221,7 +234,7 @@ button:disabled {
 }
 
 .close {
-  position: absolute;
+  position: absolute; /* 绝对定位，相对于 .modal-content */
   top: 10px;
   right: 10px;
   color: #aaa;
@@ -235,4 +248,116 @@ button:disabled {
   color: #000;
   text-decoration: none;
   cursor: pointer;
+}
+
+.server-status {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  color: black; /* 字体颜色 */
+  padding: 10px;
+  border-top-right-radius: 5px;
+  z-index: 1000; /* 确保元素在其他元素之上 */
+  text-align: left;
+  background-color: transparent; /* 设置背景为透明 */
+  box-shadow: none; /* 移除阴影 */
+}
+
+.server-status-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-left: 5px;
+  vertical-align: middle;
+}
+
+.pending-count {
+  margin-top: 5px;
+}
+
+.modal-content {
+  width: 80%; /* 增加模态窗口的宽度 */
+  max-width: 900px;
+  margin: auto;
+  padding: 20px;
+  background-color: white;
+  border-radius: 10px;
+  overflow: auto; /* 使得内容超出时能够滚动 */
+}
+
+.table-container {
+  overflow: auto; /* 允许横向和纵向滚动 */
+  max-height: 400px; /* 设定表格最大高度 */
+  width: 100%;
+}
+
+table {
+  width: 200%; /* 设置宽度足够大以便水平滚动 */
+  border-collapse: collapse;
+}
+
+th, td {
+  border: 1px solid #dddddd;
+  text-align: left;
+  padding: 8px;
+  white-space: nowrap; /* 禁止换行 */
+}
+
+th {
+  background-color: #f2f2f2;
+}
+
+/* Popup styles */
+.popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(6, 6, 6, 0.5);
+}
+
+.popup-content {
+  position: relative; /* 确保关闭按钮相对于 .popup-content 定位 */
+  background-color: rgb(245, 240, 240);
+  padding: 20px;
+  border-radius: 5px;
+  width: 300px;
+  max-width: 90%;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+  animation: blink 1s infinite;
+}
+
+.popup-close {
+  position: absolute; /* 固定在 .popup-content 内 */
+  top: 0; /* 距离顶部 0 */
+  right: 0; /* 距离右侧 0 */
+  padding: 10px; /* 给按钮一些内边距，以便更容易点击 */
+  color: #f71212;
+  font-size: 30px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.popup-close:hover,
+.popup-close:focus {
+  color: #000;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.format-select {
+  margin-right: 20px;
+  padding: 5px;
+  font-size: 14px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+.red-text {
+  color: red;
 }
