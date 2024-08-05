@@ -19,6 +19,8 @@ services:
       - "5010:5010"
     environment:
       - FLASK_ENV=development
+    volumes:
+      - ./sso_login/logs/login_log:/logs
     networks:
       - aibt_network
 

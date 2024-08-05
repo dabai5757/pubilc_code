@@ -39,6 +39,9 @@ server {
     access_log /var/log/nginx/access.log;
     error_log /var/log/nginx/error.log;
 
+#****************************************************************************************************************
+# GitHub sso
+
     location /sso_ui {
         alias /usr/share/nginx/html/sso_ui/;
         index index.html;
@@ -69,10 +72,8 @@ server {
         proxy_set_header X-Forwarded-Proto https;
     }
 
-    # 认证检查的内部位置
-    location = /auth/check {
-        internal;
-        proxy_pass http://sso_login;  # 替换为 Flask 应用地址
+    location /logout {
+        proxy_pass http://sso_login/logout;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -103,13 +104,43 @@ server {
         return 302 https://192.168.10.9:33380/sso_ui/;  # 重定向到登录页面
     }
 
-    location /logout {
-        proxy_pass http://sso_login/logout;
+    # 认证检查的内部位置
+    location = /auth/check {
+        internal;
+        proxy_pass http://sso_login;  # 替换为 Flask 应用地址
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
+
+    location /get_username {
+        proxy_pass http://sso_login/get_username;  # 后端Flask应用的地址
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass_request_headers on;  # 将请求头信息传递给后端
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    # location /protected {
+    #    # 检查用户是否已认证
+    #    if ($http_cookie !~* "github_token") {
+    #        return 302 https://192.168.10.9:33380/sso_ui/;
+    #    }
+    #    proxy_pass http://backend/protected;
+    #    proxy_set_header Host $host;
+    #    proxy_set_header X-Real-IP $remote_addr;
+    #    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    #    proxy_set_header X-Forwarded-Proto $scheme;
+    #}
+
+#****************************************************************************************************************
+
+# AIBT
 
     location ~ /api {
         client_max_body_size 5g;
@@ -121,18 +152,6 @@ server {
         proxy_connect_timeout ${TIMEOUT};
         proxy_send_timeout ${TIMEOUT};
         send_timeout ${TIMEOUT};
-    }
-
-    location /protected {
-        # 检查用户是否已认证
-        if ($http_cookie !~* "github_token") {
-            return 302 https://192.168.10.9:33380/sso_ui/;
-        }
-        proxy_pass http://backend/protected;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
     location /output_txt_files {
@@ -157,6 +176,33 @@ server {
             send_timeout                ${TIMEOUT};
         }
 
+#****************************************************************************************************************
+
+# 普通登陆
+
+    location /normal_login {
+        proxy_pass http://sso_login/validate;  # 认证服务的URL
+        proxy_pass_request_body on;  # 允许转发请求体
+        proxy_set_header Content-Length $content_length;  # 保持原请求的 Content-Length
+        proxy_set_header Content-Type $content_type;  # 保持原请求的 Content-Type
+        proxy_set_header X-Original-URI $request_uri;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    location /normal_register {
+        proxy_pass http://sso_login/register;  # 认证服务的URL
+        proxy_pass_request_body on;  # 允许转发请求体
+        proxy_set_header Content-Length $content_length;  # 保持原请求的 Content-Length
+        proxy_set_header Content-Type $content_type;  # 保持原请求的 Content-Type
+        proxy_set_header X-Original-URI $request_uri;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+#****************************************************************************************************************
     error_page 500 502 503 504 /50x.html;
 
     location = /50x.html {

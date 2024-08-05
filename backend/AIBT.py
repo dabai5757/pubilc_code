@@ -142,6 +142,7 @@ def transcribe_audio():
         duration = request.form.get('duration', 0)
         file_type = request.form.get('file_type', '')
         format = request.form.get('format', '')
+        login_method = request.form.get('login_method', '')
 
         connection = getattr(g, 'connection', None)
         cursor = connection.cursor()
@@ -162,11 +163,12 @@ def transcribe_audio():
                 `translation_language`,
                 `user_name`,
                 `file_type`,
-                `format`
+                `format`,
+                `login_method`
             ) VALUES (
-                %s, %s, 'pending', %s, %s, NULL, NULL, %s, %s, %s, %s
+                %s, %s, 'pending', %s, %s, NULL, NULL, %s, %s, %s, %s, %s
             )
-        """, (audio_file_id, audio_filename, duration, upload_time, language, username, file_type, format))
+        """, (audio_file_id, audio_filename, duration, upload_time, language, username, file_type, format, login_method))
         connection.commit()
         # return audio_file_id
         return jsonify({'audio_file_id': audio_file_id}), 200

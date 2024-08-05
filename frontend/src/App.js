@@ -40,18 +40,28 @@ const App = () => {
   // }, [uploadedFilesCount, fileNames.length]);
 
   useEffect(() => {
-    if (Notification.permission === "default") {
-      Notification.requestPermission();
-    }
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const usernameFromURL = urlParams.get('username');
-    if (usernameFromURL) {
-      setUsername(usernameFromURL);
-    }
+    // 请求后端API获取用户名
+    fetch("https://192.168.10.9:33380/get_username", {
+      credentials: 'include', // 允许跨域请求中传递cookie
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.username) {
+          setUsername(data.username);
+        } else {
+          console.error("User not authenticated");
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching username:', error);
+      });
   }, []);
 
   const handleLogout = () => {
+    // 获取当前 URL 并存入变量
+    const url = window.location.href;
+    console.log("Current URL:", url);
+
     fetch(`${API_BASE_URL}/logout`, {
       method: 'GET',
       credentials: 'include',
@@ -60,13 +70,22 @@ const App = () => {
       if (response.ok) {
         localStorage.clear();
         sessionStorage.clear();
-        window.location.href = "https://192.168.10.9:33380/";
+
+        // 检查 URL 中是否包含 'github_sso'
+        if (url.includes('github_sso')) {
+          // 如果 URL 中包含 'github_sso'，则重定向到 GitHub 注销页面
+          window.location.href = "https://github.com/logout";
+        } else {
+          // 否则，重定向到应用程序的登录页面
+          window.location.href = "https://192.168.10.9:33380/sso_ui/";
+        }
       }
     })
     .catch(error => {
       console.error('Logout failed:', error);
     });
-  };
+};
+
 
   const handleFileChange = (event) => {
     const files = Array.from(event.target.files);
@@ -217,12 +236,25 @@ const App = () => {
     const formData = new FormData();
     const audioDuration = await getAudioDuration(file);
     const audioType = file.type;
+
+    // 定义 API 基础 URL 和登录方式
+    const url_api = window.location.href; // 根据需要定义 API 基础 URL
+    let login_method = "normal"; // 默认登录方式为 normal
+
+    // 检查 URL 中是否包含 'github_sso'，并相应地设置登录方式
+    if (url_api.includes('github_sso')) {
+      login_method = 'github_sso';
+    }
+
     formData.append("audio_file", file);
     formData.append("language", language);
     formData.append("username", username);
     formData.append("duration", audioDuration);
     formData.append("file_type", audioType);
     formData.append("format", format);
+    formData.append("login_method", login_method);
+
+
 
     const options = {
       method: "POST",

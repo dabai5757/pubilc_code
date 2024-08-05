@@ -21,16 +21,26 @@
             </button>
             <div class="divider"></div>
             <div class="email-signin-text">Sign in with email</div>
-            <form>
-                <label for="email">Email</label>
-                <input type="email" id="email" required>
+            <form id="login-form">
+                <label for="username">Username</label>
+                <input type="text" id="username" required>
                 <label for="password">Password</label>
                 <input type="password" id="password" required>
-                <button type="submit" class="login-btn email">Sign in to AIBT</button>
+                <div class="login-buttons">
+                    <button type="submit" class="login-btn email" name="action" value="login">Sign in</button>
+                    <button type="submit" class="login-btn register" name="action" value="register">Register</button>
+                </div>
             </form>
-            <a href="#" class="forgot-password">Forgot password?</a>
+            <p class="forgot-password">Forgot password? Contact us at: <strong>ai@vbest.jp</strong></p>
         </div>
     </div>
+    <div id="error-modal" class="modal-container">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <p id="modal-message"></p>
+        </div>
+    </div>
+    <div id="message"></div>
     <script src="script.js"></script>
 </body>
 </html>

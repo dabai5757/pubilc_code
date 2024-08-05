@@ -1,20 +1,18 @@
 body {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
   margin: 0;
   font-family: Arial, Helvetica, sans-serif;
   background-color: #1d1d1d;
   color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
 }
 
 .login-container {
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 100%;
-  height: 100%;
   padding: 20px;
   box-sizing: border-box;
 }
@@ -43,7 +41,7 @@ body {
   padding: 1rem;
   margin: 1.5rem 0;
   border: none;
-  border-radius: 24px; /* Set to oval shape */
+  border-radius: 24px;
   color: white;
   cursor: pointer;
   font-size: 16px;
@@ -69,12 +67,21 @@ body {
 }
 
 .email {
-  background-color: #007bff;
-  border-radius: 24px; /* Set to oval shape */
+  background-color: #75c173;
+  border-radius: 24px;
 }
 
 .email:hover {
-  background-color: #0056b3;
+  background-color: #10ae47;
+}
+
+.register {
+  background-color: #2196F3; /* 蓝色 */
+  border-radius: 24px;
+}
+
+.register:hover {
+  background-color: #1976D2; /* 悬停时的深蓝色 */
 }
 
 .divider {
@@ -112,7 +119,7 @@ label {
 }
 
 input {
-  width: 100%; /* Full width */
+  width: 100%;
   padding: 1rem;
   margin-bottom: 1.5rem;
   border: none;
@@ -130,4 +137,46 @@ input {
 
 .forgot-password:hover {
   text-decoration: underline;
+}
+
+.modal-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+.modal-content {
+  background-color: #2d2d2d;
+  color: white;
+  padding: 20px;
+  border: 1px solid #888;
+  max-width: 400px;
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+  position: relative;
+}
+
+.close {
+  position: absolute;
+  top: 10px;
+  right: 20px;
+  color: white;
+  font-size: 24px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+  color: #bbb;
+  text-decoration: none;
+  cursor: pointer;
 }
