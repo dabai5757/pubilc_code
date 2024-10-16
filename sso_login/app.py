@@ -13,9 +13,9 @@ CORS(app)
 # *************************************************************************************
 # github sso login
 
-app.secret_key = 'e5b0c2dfb8374e7a8f2c1c9c7a4e2b3a'  # 使用你生成的密钥
-app.config['GITHUB_CONSUMER_KEY'] = 'Ov23liSvBbUEbyrHffIe'
-app.config['GITHUB_CONSUMER_SECRET'] = 'b28178abe5ca58c509d2819dc623d151b2bbc044'
+app.secret_key = '*****'  # 使用你生成的密钥
+app.config['GITHUB_CONSUMER_KEY'] = '*****'
+app.config['GITHUB_CONSUMER_SECRET'] = '*****'
 
 oauth = OAuth(app)
 github = oauth.remote_app(
