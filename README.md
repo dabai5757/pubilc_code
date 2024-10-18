@@ -1,3 +1,9 @@
-# ai model local
-# パラメータ調整(ai_mode port)
-# frondend backend API(get_url)追加
+文字起こしツール
+
+Features
+社内ローカル環境で実行できる
+推定完了時刻表示
+完了後ポップアップ通知（ブラウザ通知有効化必要ある）
+対応可能ファイル（mp3、mp4、mpweg、mpga、m4a、wav、webm）
+結果出力タイプ（txt、md、rtf）
+対応可能言語（日本語、英語、中国語）
